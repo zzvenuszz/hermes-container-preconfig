@@ -17,6 +17,7 @@ html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: 
 </head>
 <body>
 <div id="status-bar">Connecting...</div>
+<input id="keyboard-trigger" autocomplete="off" spellcheck="false" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
 <div id="terminal-container"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
@@ -60,6 +61,12 @@ function initTerminal() {
     
     // Focus on click
     terminalContainer.addEventListener("mousedown", function(e) {
+    // Mobile: focus hidden input to trigger virtual keyboard
+    terminalContainer.addEventListener("click", () => {
+        const kb = document.getElementById("keyboard-trigger");
+        if (kb) kb.focus();
+        term.focus();
+    });
         if (e.button === 2) { e.preventDefault(); return false; }
         term.focus();
     });
@@ -67,8 +74,14 @@ function initTerminal() {
     terminalContainer.setAttribute("inputmode", "none");
     terminalContainer.setAttribute("autocomplete", "off");
     terminalContainer.addEventListener("compositionstart", e => { e.preventDefault(); return false; }, true);
+    // Mobile: focus hidden input to trigger virtual keyboard
+    
     terminalContainer.addEventListener("compositionend", e => { e.preventDefault(); return false; }, true);
+    // Mobile: focus hidden input to trigger virtual keyboard
+    
     terminalContainer.addEventListener("contextmenu", e => { e.preventDefault(); e.stopPropagation(); return false; });
+    // Mobile: focus hidden input to trigger virtual keyboard
+    
     
     // xterm.js onData — sends ALL keyboard input to server
     term.onData(function(data) {
