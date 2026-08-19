@@ -27,7 +27,6 @@
 #    (Danh sách đầy đủ xem trong cli-config.yaml.example, mục model.provider)
 # ----------------------------------------------------------------------------
 AI_PROVIDER=openrouter
-
 # ----------------------------------------------------------------------------
 # 2) API KEYS — chỉ cần điền key của provider đã chọn ở mục 1.
 #    Các dòng để trống sẽ bị bỏ qua (không ghi vào /data/hermes/.env).
