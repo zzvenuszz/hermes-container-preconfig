@@ -8,7 +8,7 @@ ENV HERMES_CONTAINER=1
 WORKDIR /app
 
 # ============================================================
-# SYSTEM DEPENDENCIES — minimal, no browser/X11/audio packages
+# SYSTEM DEPENDENCIES
 # ============================================================
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -46,12 +46,9 @@ COPY app.py /app/app.py
 COPY templates /app/templates
 COPY install.sh /app/install.sh
 COPY entrypoint.sh /app/entrypoint.sh
-# config.txt holds the Gemini API key (user-provided). entrypoint.sh reads
-# it and writes the key into /data/hermes/.env (the persisted volume) — it is
-# NOT read from source code at runtime.
 COPY config.txt /app/config.txt
 
-RUN chmod +x \
+RUN chmod 755 \
     /app/app.py \
     /app/install.sh \
     /app/entrypoint.sh
@@ -65,11 +62,25 @@ RUN pip install \
     uvicorn[standard]
 
 # ============================================================
-# DATA
+# PRE-INSTALL HERMES (in build phase — avoids runtime permission issues)
 # ============================================================
-RUN mkdir -p \
-    /data/hermes/hermes-agent && \
-    git clone --depth=1 https://github.com/NousResearch/hermes-agent.git /data/hermes/hermes-agent
+RUN mkdir -p /data/hermes && \
+    git clone --depth=1 https://github.com/NousResearch/hermes-agent.git /data/hermes/hermes-agent && \
+    \
+    # Install uv (managed)
+    curl -LsSf https://astral.sh/uv/install.sh | sh 2>&1 | tail -3 && \
+    \
+    # Create venv + install Hermes (skip Node.js/browser tools)
+    python3 -m venv /data/hermes/hermes-agent/venv && \
+    /data/hermes/hermes-agent/venv/bin/pip install --no-cache-dir \
+        -e "/data/hermes/hermes-agent[all]" 2>&1 | tail -5 && \
+    \
+    # Fix permissions on all binaries
+    chmod -R 755 /data/hermes/hermes-agent/venv/bin/ && \
+    chmod -R 755 /data/hermes/hermes-agent/hermes_cli/ && \
+    \
+    # Clean apt cache
+    rm -rf /var/lib/apt/lists/*
 
 # ============================================================
 # HUGGING FACE
@@ -78,13 +89,12 @@ ENV PORT=7860
 ENV HERMES_HOME=/data/hermes
 ENV HERMES_NONINTERACTIVE=1
 
-# Make the venv + Hermes-managed tooling available on PATH for every process.
+# Make the venv + Hermes-managed tooling available on PATH
 ENV PATH="/data/hermes/bin:/data/hermes/node/bin:/data/hermes/hermes-agent/venv/bin:/root/.local/bin:/usr/local/bin:/usr/bin:/bin"
 
 EXPOSE 7860
 
 # Startup pipeline:
-#   entrypoint.sh  → install (once) + configure Hermes → exec app.py
-#   app.py         → manages the Hermes screen session, then serves the web
-#                    UI on 0.0.0.0:$PORT (keeps the container alive).
+#   entrypoint.sh  → configure Hermes (key already in image) → exec app.py
+#   app.py         → manages the Hermes screen session, then serves web UI
 ENTRYPOINT ["/app/entrypoint.sh"]

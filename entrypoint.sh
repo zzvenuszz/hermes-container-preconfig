@@ -25,35 +25,29 @@ if [ -f "$CONFIG_TXT" ]; then
     cp -f "$CONFIG_TXT" "$HERMES_HOME/config.txt" 2>/dev/null || true
 fi
 
-# Pre-install Hermes via pip directly (skip install.sh to avoid npm timeout)
-if [ ! -x "$HERMES_BIN" ]; then
-    log "Installing Hermes dependencies via pip..."
-
-    if [ -f "$HERMES_DIR/pyproject.toml" ]; then
-        python3 -m venv "$HERMES_DIR/venv" 2>/dev/null || true
-        "$VENV_BIN/pip" install --break-system-packages --no-cache-dir -e "$HERMES_DIR[all]" 2>&1 | tail -3 || true
-    fi
-
-    # Fallback: run install.sh with retry (only if pip failed)
-    if [ ! -x "$HERMES_BIN" ]; then
-        log "pip install incomplete — running install.sh with retries"
-        MAX_RETRIES=2
-        retry_count=0
-        while [ "$retry_count" -lt "$MAX_RETRIES" ]; do
-            retry_count=$((retry_count + 1))
-            if bash /app/install.sh --skip-browser 2>&1 | tail -5; then
-                break
-            fi
-            log_warn "install.sh attempt $retry_count failed"
-            sleep 10
-        done
-    fi
+# Hermes is pre-installed in image — just fix permissions on runtime mount
+if [ -d "$HERMES_DIR/venv" ]; then
+    chmod -R 755 "$VENV_BIN" 2>/dev/null || true
+    log "Hermes pre-installed at $HERMES_BIN"
+else
+    log_warn "Hermes venv not found — running install.sh fallback"
+    MAX_RETRIES=2
+    retry_count=0
+    while [ "$retry_count" -lt "$MAX_RETRIES" ]; do
+        retry_count=$((retry_count + 1))
+        if bash /app/install.sh --skip-browser 2>&1 | tail -5; then
+            chmod -R 755 "$VENV_BIN" 2>/dev/null || true
+            break
+        fi
+        log_warn "install.sh attempt $retry_count failed"
+        sleep 5
+    done
 fi
 
 if [ -x "$HERMES_BIN" ]; then
-    log "Hermes ready at $HERMES_BIN"
+    log "Hermes ready: $HERMES_BIN"
 else
-    log_warn "Hermes binary not found — continuing anyway"
+    log_warn "Hermes binary not found — terminal will run without agent"
 fi
 
 # --- Configure API key ---
@@ -99,17 +93,13 @@ else
     log_warn "No API key found (API_KEY_DEFAULT env or config.txt)"
 fi
 
-# --- Run hermes status ---
+# --- Run hermes config ---
 if [ -x "$HERMES_BIN" ]; then
-    HERMES="$HERMES_BIN"
-    "$HERMES" config set terminal.backend local >/dev/null 2>&1 || log_warn "config set terminal.backend failed"
+    export HERMES="$HERMES_BIN"
+    "$HERMES" config set terminal.backend local >/dev/null 2>&1 || true
     PROV="$(sed -n 's/^AI_PROVIDER=//p' "$HERMES_HOME/config.txt" 2>/dev/null | tail -1)"
     [ -n "$PROV" ] && [ "$PROV" != "auto" ] && "$HERMES" config set provider "$PROV" >/dev/null 2>&1 || true
-    log "--- hermes status ---"
-    "$HERMES" status 2>&1 | sed 's/^/    /' || true
-    log "--- end status ---"
-else
-    log_warn "hermes binary not found — skipping config"
+    log "Hermes configured"
 fi
 
 # --- Start web server ---
