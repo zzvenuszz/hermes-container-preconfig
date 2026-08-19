@@ -19,45 +19,34 @@ log_warn() { echo "[entrypoint] WARN: $*"; }
 
 mkdir -p "$HERMES_HOME"
 
-# Copy config.txt into HERMES_HOME
+# Copy config.txt if available
 CONFIG_TXT="/app/config.txt"
 if [ -f "$CONFIG_TXT" ]; then
     cp -f "$CONFIG_TXT" "$HERMES_HOME/config.txt" 2>/dev/null || true
 fi
 
-# Restore Hermes from image fallback if volume mount wiped it
-if [ ! -d "$HERMES_HOME/node" ] && [ -d "/app/.hermes-fallback/node" ]; then
-    log "Restoring Node.js from fallback..."
-    cp -r /app/.hermes-fallback/node "$HERMES_HOME/node" 2>/dev/null || true
-    chmod -R 755 "$HERMES_HOME/node/bin" 2>/dev/null || true
+# Pre-install Node.js from fallback or download fresh
+if [ ! -d "$HERMES_HOME/node" ] || [ ! -x "$HERMES_HOME/node/bin/npm" ]; then
+    log "Installing Node.js..."
+    mkdir -p "$HERMES_HOME/node"
+    curl -fsSL https://nodejs.org/dist/v20.11.1/node-v20.11.1-linux-x64.tar.xz -o /tmp/node.tar.xz && \
+    tar -xJf /tmp/node.tar.xz -C "$HERMES_HOME/node" --strip-components=1 && \
+    rm /tmp/node.tar.xz && \
+    chmod -R 755 "$HERMES_HOME/node/bin/"
 fi
 
-if [ ! -x "$HERMES_BIN" ] && [ -d "/app/.hermes-fallback/venv" ]; then
-    log "Restoring Hermes from image fallback..."
-    mkdir -p "$HERMES_DIR"
-    cp -r /app/.hermes-fallback/* "$HERMES_DIR/" 2>/dev/null || true
-    chmod -R 755 "$VENV_BIN" 2>/dev/null || true
-fi
-
-# If still missing, run install.sh fallback
+# Install Hermes via pip directly (always works, no volume issues)
 if [ ! -x "$HERMES_BIN" ]; then
-    log_warn "Hermes binary missing — running install.sh fallback..."
-    MAX_RETRIES=2
-    retry_count=0
-    while [ "$retry_count" -lt "$MAX_RETRIES" ]; do
-        retry_count=$((retry_count + 1))
-        if bash /app/install.sh --skip-browser 2>&1 | tail -5; then
-            chmod -R 755 "$VENV_BIN" 2>/dev/null || true
-            break
-        fi
-        log_warn "install.sh attempt $retry_count failed"
-        sleep 5
-    done
+    log "Installing Hermes via pip..."
+    mkdir -p "$HERMES_DIR"
+    git clone --depth=1 https://github.com/NousResearch/hermes-agent.git "$HERMES_DIR" 2>/dev/null || true
+    python3 -m venv "$HERMES_DIR/venv" 2>/dev/null || true
+    "$VENV_BIN/pip" install --break-system-packages --no-cache-dir -e "$HERMES_DIR[all]" 2>&1 | tail -3
+    chmod -R 755 "$VENV_BIN" 2>/dev/null || true
 fi
 
 if [ -x "$HERMES_BIN" ]; then
-    chmod -R 755 "$VENV_BIN" 2>/dev/null || true
-    log "Hermes pre-installed at $HERMES_BIN"
+    log "Hermes ready: $HERMES_BIN"
 else
     log_warn "Hermes binary not found — terminal will run without agent"
 fi
@@ -65,7 +54,6 @@ fi
 # --- Configure API key ---
 KEY=""
 KEY_NAME=""
-
 if [ -n "${API_KEY_DEFAULT:-}" ]; then
     KEY="$API_KEY_DEFAULT"
     KEY_NAME="GOOGLE_API_KEY"
@@ -102,10 +90,10 @@ if [ -n "$KEY" ]; then
     fi
     log "${KEY_NAME} applied to $ENV_FILE"
 else
-    log_warn "No API key found (API_KEY_DEFAULT env or config.txt)"
+    log_warn "No API key found"
 fi
 
-# --- Run hermes config ---
+# --- Configure Hermes ---
 if [ -x "$HERMES_BIN" ]; then
     "$HERMES_BIN" config set terminal.backend local >/dev/null 2>&1 || true
     PROV="$(sed -n 's/^AI_PROVIDER=//p' "$HERMES_HOME/config.txt" 2>/dev/null | tail -1)"

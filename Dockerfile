@@ -48,7 +48,7 @@ COPY install.sh /app/install.sh
 COPY entrypoint.sh /app/entrypoint.sh
 COPY config.txt /app/config.txt
 
-RUN chmod 755 \
+RUN chmod +x \
     /app/app.py \
     /app/install.sh \
     /app/entrypoint.sh
@@ -62,36 +62,21 @@ RUN pip install \
     uvicorn[standard]
 
 # ============================================================
-# PRE-INSTALL HERMES (in build phase — avoids runtime permission issues)
+# PRE-INSTALL Node.js 20 LTS (avoids runtime download in HF Spaces)
 # ============================================================
-RUN mkdir -p /data/hermes && \
-    git clone --depth=1 https://github.com/NousResearch/hermes-agent.git /data/hermes/hermes-agent && \
-    \
-    # Install uv (managed)
-    curl -LsSf https://astral.sh/uv/install.sh | sh 2>&1 | tail -3 && \
-    \
-    # Create venv + install Hermes (skip Node.js/browser tools)
-    python3 -m venv /data/hermes/hermes-agent/venv && \
-    /data/hermes/hermes-agent/venv/bin/pip install --no-cache-dir \
-        -e "/data/hermes/hermes-agent[all]" 2>&1 | tail -5 && \
-    \
-    # Fix permissions on all binaries
-    chmod -R 755 /data/hermes/hermes-agent/venv/bin/ && \
-    chmod -R 755 /data/hermes/hermes-agent/hermes_cli/ && \
-    \
-    # Pre-install Node.js 26 LTS (avoids runtime download + install.sh conflict)
-    curl -fsSL https://nodejs.org/dist/v26.7.0/node-v26.7.0-linux-x64.tar.xz -o /tmp/node.tar.xz && \
-    mkdir -p /data/hermes/node && \
-    tar -xJf /tmp/node.tar.xz -C /data/hermes/node --strip-components=1 && \
+ENV NODE_VERSION=v20.11.1
+RUN curl -fsSL "https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-x64.tar.xz" -o /tmp/node.tar.xz && \
+    mkdir -p /opt/node && \
+    tar -xJf /tmp/node.tar.xz -C /opt/node --strip-components=1 && \
     rm /tmp/node.tar.xz && \
-    chmod -R 755 /data/hermes/node/bin/ && \
-    \
-    # Copy installed Hermes to fallback location (HF Spaces volume may wipe /data)
-    cp -r /data/hermes /app/.hermes-fallback && \
-    chmod -R 755 /app/.hermes-fallback/hermes-agent/venv/bin/ && \
-    \
-    # Clean apt cache
-    rm -rf /var/lib/apt/lists/*
+    chmod -R 755 /opt/node/bin/
+
+ENV PATH="/opt/node/bin:${PATH}"
+
+# ============================================================
+# DATA
+# ============================================================
+RUN mkdir -p /data/hermes
 
 # ============================================================
 # HUGGING FACE
@@ -100,12 +85,6 @@ ENV PORT=7860
 ENV HERMES_HOME=/data/hermes
 ENV HERMES_NONINTERACTIVE=1
 
-# Make the venv + Hermes-managed tooling available on PATH
-ENV PATH="/data/hermes/bin:/data/hermes/node/bin:/data/hermes/hermes-agent/venv/bin:/root/.local/bin:/usr/local/bin:/usr/bin:/bin"
-
 EXPOSE 7860
 
-# Startup pipeline:
-#   entrypoint.sh  → configure Hermes (key already in image) → exec app.py
-#   app.py         → manages the Hermes screen session, then serves web UI
 ENTRYPOINT ["/app/entrypoint.sh"]
