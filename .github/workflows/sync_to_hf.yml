@@ -65,7 +65,7 @@ jobs:
           # ============================================================
 
           targets=(
-            "xnoobsclan101 noobsclan101/devserver"
+            "noobsclan101 noobsclan101/devserver"
             "xzzvenuszz zzvenuszz/testpaper"
           )
 

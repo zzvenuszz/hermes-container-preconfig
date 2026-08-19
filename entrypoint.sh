@@ -19,18 +19,23 @@ log_warn() { echo "[entrypoint] WARN: $*"; }
 
 mkdir -p "$HERMES_HOME"
 
-# Copy config.txt into HERMES_HOME if present
+# Copy config.txt into HERMES_HOME
 CONFIG_TXT="/app/config.txt"
 if [ -f "$CONFIG_TXT" ]; then
     cp -f "$CONFIG_TXT" "$HERMES_HOME/config.txt" 2>/dev/null || true
 fi
 
-# Hermes is pre-installed in image — just fix permissions on runtime mount
-if [ -d "$HERMES_DIR/venv" ]; then
+# Restore Hermes from image fallback if volume mount wiped it
+if [ ! -x "$HERMES_BIN" ] && [ -d "/opt/hermes-fallback/venv" ]; then
+    log "Restoring Hermes from image fallback..."
+    mkdir -p "$HERMES_DIR"
+    cp -r /opt/hermes-fallback/* "$HERMES_DIR/" 2>/dev/null || true
     chmod -R 755 "$VENV_BIN" 2>/dev/null || true
-    log "Hermes pre-installed at $HERMES_BIN"
-else
-    log_warn "Hermes venv not found — running install.sh fallback"
+fi
+
+# If still missing, run install.sh fallback
+if [ ! -x "$HERMES_BIN" ]; then
+    log_warn "Hermes binary missing — running install.sh fallback..."
     MAX_RETRIES=2
     retry_count=0
     while [ "$retry_count" -lt "$MAX_RETRIES" ]; do
@@ -45,7 +50,8 @@ else
 fi
 
 if [ -x "$HERMES_BIN" ]; then
-    log "Hermes ready: $HERMES_BIN"
+    chmod -R 755 "$VENV_BIN" 2>/dev/null || true
+    log "Hermes pre-installed at $HERMES_BIN"
 else
     log_warn "Hermes binary not found — terminal will run without agent"
 fi
@@ -95,10 +101,11 @@ fi
 
 # --- Run hermes config ---
 if [ -x "$HERMES_BIN" ]; then
-    export HERMES="$HERMES_BIN"
-    "$HERMES" config set terminal.backend local >/dev/null 2>&1 || true
+    "$HERMES_BIN" config set terminal.backend local >/dev/null 2>&1 || true
     PROV="$(sed -n 's/^AI_PROVIDER=//p' "$HERMES_HOME/config.txt" 2>/dev/null | tail -1)"
-    [ -n "$PROV" ] && [ "$PROV" != "auto" ] && "$HERMES" config set provider "$PROV" >/dev/null 2>&1 || true
+    if [ -n "$PROV" ] && [ "$PROV" != "auto" ]; then
+        "$HERMES_BIN" config set provider "$PROV" >/dev/null 2>&1 || true
+    fi
     log "Hermes configured"
 fi
 
