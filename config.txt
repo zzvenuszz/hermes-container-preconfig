@@ -1,0 +1,67 @@
+# ============================================================================
+#  Hermes Agent — Cấu hình cài đặt (config.txt)
+# ============================================================================
+#  File này được install.sh ĐỌC TỰ ĐỘNG khi cài đặt → cài đặt KHÔNG cần hỏi gì.
+#
+#  Vị trí file (theo thứ tự ưu tiên):
+#    1. $HERMES_CONFIG            (biến môi trường, nếu bạn đặt)
+#    2. cùng thư mục với install.sh   ← mặc định nên để ở đây
+#    3. /data/hermes/config.txt
+#
+#  Định dạng:  KEY=VALUE  (mỗi dòng một biến)
+#  Dòng bắt đầu bằng "#" là comment, sẽ bị bỏ qua.
+#  Sau khi sửa xong, chạy:   bash install.sh
+#
+#  LƯU Ý sudo: nếu tài khoản cần mật khẩu sudo, các gói tùy chọn (ripgrep,
+#  ffmpeg, build tools) sẽ được BỎ QUA âm thầm để không chặn quá trình chạy nền.
+#  Khi đó hãy tự cài sau:  sudo apt install -y ripgrep ffmpeg build-essential
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# 1) AI PROVIDER — mặc định: openrouter
+#    Giá trị thường dùng:
+#      openrouter   → cần OPENROUTER_API_KEY
+#      anthropic    → cần ANTHROPIC_API_KEY
+#      openai       → cần OPENAI_API_KEY
+#      gemini       → cần GOOGLE_API_KEY
+#    (Danh sách đầy đủ xem trong cli-config.yaml.example, mục model.provider)
+# ----------------------------------------------------------------------------
+AI_PROVIDER=gemini
+
+# ----------------------------------------------------------------------------
+# 2) API KEYS — chỉ cần điền key của provider đã chọn ở mục 1.
+#    Các dòng để trống sẽ bị bỏ qua (không ghi vào /data/hermes/.env).
+# ----------------------------------------------------------------------------
+OPENROUTER_API_KEY=
+# ANTHROPIC_API_KEY=
+# OPENAI_API_KEY=
+GOOGLE_API_KEY=
+# FIREWORKS_API_KEY=
+# KIMI_API_KEY=
+# NOVITA_API_KEY=
+
+# ----------------------------------------------------------------------------
+# 3) MODEL mặc định — bỏ trống thì giữ model mặc định của Hermes.
+#    Ví dụ với OpenRouter:
+#      MODEL=anthropic/claude-opus-4.6
+#    Đổi model sau này bằng lệnh:  hermes model
+# ----------------------------------------------------------------------------
+MODEL=gemini-3.5-flash-lite
+
+# ----------------------------------------------------------------------------
+# 4) Messaging tokens — điền nếu muốn Hermes chạy trên Telegram/Discord/Slack.
+#    Nếu TẤT CẢ để trống, gateway sẽ không được cài đặt.
+# ----------------------------------------------------------------------------
+TELEGRAM_BOT_TOKEN=
+DISCORD_BOT_TOKEN=
+SLACK_BOT_TOKEN=
+SLACK_APP_TOKEN=
+WHATSAPP_ENABLED=false
+
+# ----------------------------------------------------------------------------
+# 5) LỰA CHỌN KHI CÀI ĐẶT  (giá trị: yes / no)
+# ----------------------------------------------------------------------------
+INSTALL_RIPGREP=yes      # ripgrep — tìm kiếm file nhanh hơn (cần sudo)
+INSTALL_FFMPEG=yes       # ffmpeg — tin nhắn giọng nói TTS (cần sudo)
+INSTALL_BUILD_TOOLS=yes  # gcc, python3-dev, libffi-dev trên Debian/Ubuntu (cần sudo)
+INSTALL_GATEWAY=yes      # cài gateway chạy nền nếu có messaging tokens ở mục 4

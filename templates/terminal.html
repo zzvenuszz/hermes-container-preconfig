@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hermes Docker Terminal</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+<style>
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #000; }
+#terminal-container { width: 100vw; height: 100vh; }
+#status-bar {
+  position: absolute; top: 0; left: 0; right: 0;
+  background: #1a1a1a; color: #888; padding: 4px 12px;
+  font-family: monospace; font-size: 12px; z-index: 10;
+}
+</style>
+</head>
+<body>
+<div id="status-bar">Connecting...</div>
+<div id="terminal-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+<script>
+const statusElement = document.getElementById("status-bar");
+const terminalContainer = document.getElementById("terminal-container");
+
+// Hide status bar when terminal starts
+setTimeout(() => { statusElement.style.display = "none"; }, 2000);
+
+// Global IME prevention
+document.addEventListener("compositionstart", e => { e.preventDefault(); return false; }, true);
+document.addEventListener("compositionupdate", e => { e.preventDefault(); return false; }, true);
+document.addEventListener("compositionend", e => { e.preventDefault(); return false; }, true);
+document.addEventListener("focusin", e => {
+    e.target.setAttribute("inputmode", "none");
+    e.target.setAttribute("autocomplete", "off");
+}, true);
+
+// xterm.js config
+let term = null;
+let fitAddon = null;
+let socket = null;
+
+function initTerminal() {
+    term = new Terminal({
+        cursorBlink: true,
+        cursorStyle: "block",
+        convertEol: false,
+        scrollback: 5000,
+        fontSize: 14,
+        fontFamily: '"Courier New", Courier, monospace',
+        theme: { background: "#000000", foreground: "#dddddd", cursor: "#ffffff", selection: "#4a9eff" }
+    });
+
+    fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(terminalContainer);
+    fitAddon.fit();
+    
+    // Focus on click
+    terminalContainer.addEventListener("mousedown", function(e) {
+        if (e.button === 2) { e.preventDefault(); return false; }
+        term.focus();
+    });
+    
+    terminalContainer.setAttribute("inputmode", "none");
+    terminalContainer.setAttribute("autocomplete", "off");
+    terminalContainer.addEventListener("compositionstart", e => { e.preventDefault(); return false; }, true);
+    terminalContainer.addEventListener("compositionend", e => { e.preventDefault(); return false; }, true);
+    terminalContainer.addEventListener("contextmenu", e => { e.preventDefault(); e.stopPropagation(); return false; });
+    
+    // xterm.js onData — sends ALL keyboard input to server
+    term.onData(function(data) {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({type: "input", data: data}));
+        }
+    });
+    
+    // Auto-focus
+    setTimeout(() => term.focus(), 100);
+    
+    // Start connection
+    connect();
+}
+
+function connect() {
+    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+    socket = new WebSocket(protocol + "//" + location.host + "/ws/terminal");
+    socket.binaryType = "arraybuffer";
+
+    socket.onopen = function() {
+        statusElement.innerText = "CONNECTED";
+        statusElement.style.color = "#6f6";
+        setTimeout(() => {
+            if (fitAddon) fitAddon.fit();
+            term.focus();
+        }, 100);
+
+        // Send resize on connect
+        const rect = terminalContainer.getBoundingClientRect();
+        const cols = Math.floor(rect.width / 9);
+        const rows = Math.floor(rect.height / 18);
+        socket.send(JSON.stringify({type: "resize", rows: rows, cols: cols}));
+
+        // Trigger prompt by sending a newline
+        setTimeout(() => {
+            socket.send(JSON.stringify({type: "input", data: "\r"}));
+        }, 500);
+    };
+
+    socket.onmessage = function(event) {
+        let data;
+        if (event.data instanceof ArrayBuffer) {
+            data = new TextDecoder("utf-8").decode(new Uint8Array(event.data));
+        } else {
+            data = event.data;
+        }
+
+        // Minimal filter — let xterm.js handle ANSI natively
+        data = data.replace(/\x00+/g, "");
+        data = data.replace(/\x1b\][^\x07]*\x07/g, "");
+
+        if (data.length > 0) {
+            term.write(data);
+            statusElement.style.display = "none";
+        }
+    };
+
+    socket.onclose = function() {
+        statusElement.innerText = "DISCONNECTED - retrying in 2s...";
+        statusElement.style.color = "#f66";
+        statusElement.style.display = "block";
+        setTimeout(connect, 2000);
+    };
+
+    socket.onerror = function(err) {
+        console.error("WebSocket error:", err);
+        statusElement.innerText = "CONNECTION ERROR";
+        statusElement.style.color = "#f66";
+    };
+}
+
+// Prevent browser backspace history navigation
+window.addEventListener("keydown", function(e) {
+    if (e.key === "Backspace" && document.activeElement.tagName !== "INPUT") {
+        e.preventDefault();
+    }
+});
+
+// Handle terminal resize
+window.addEventListener("resize", () => {
+    if (fitAddon) {
+        try { fitAddon.fit(); } catch(e) {}
+    }
+});
+
+// Wait for DOM
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTerminal);
+} else {
+    initTerminal();
+}
+</script>
+</body>
+</html>

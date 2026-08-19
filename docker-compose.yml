@@ -1,0 +1,37 @@
+services:
+
+  hermes-test:
+
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: hermes-test
+
+    ports:
+      - "7860:7860"
+
+    volumes:
+      - hermes-data:/data
+
+    environment:
+      PORT: "7860"
+      HERMES_HOME: "/data/hermes"
+      HERMES_NONINTERACTIVE: "1"
+      # Optional runtime override: if a host-side .env file in this directory
+      # sets OPENROUTER_API_KEY, docker compose substitutes it here and it
+      # takes precedence over /app/config.txt (see entrypoint.sh).
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-}"
+
+    restart: unless-stopped
+
+    init: false
+
+    stdin_open: true
+
+    tty: true
+
+
+volumes:
+
+  hermes-data:

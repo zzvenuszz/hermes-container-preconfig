@@ -1,0 +1,9 @@
+# Keep the build context clean
+.git
+*.log
+*.pyc
+__pycache__/
+.venv
+venv
+install.log
+*.bak
