@@ -87,7 +87,8 @@ RUN mkdir -p /data/hermes && \
     chmod -R 755 /data/hermes/node/bin/ && \
     \
     # Copy installed Hermes to fallback location (HF Spaces volume may wipe /data)
-    cp -r /data/hermes /opt/hermes-fallback && \
+    cp -r /data/hermes /app/.hermes-fallback && \
+    chmod -R 755 /app/.hermes-fallback/hermes-agent/venv/bin/ && \
     \
     # Clean apt cache
     rm -rf /var/lib/apt/lists/*
