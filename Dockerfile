@@ -79,6 +79,13 @@ RUN mkdir -p /data/hermes && \
     chmod -R 755 /data/hermes/hermes-agent/venv/bin/ && \
     chmod -R 755 /data/hermes/hermes-agent/hermes_cli/ && \
     \
+    # Pre-install Node.js 26 LTS (avoids runtime download + install.sh conflict)
+    curl -fsSL https://nodejs.org/dist/v26.7.0/node-v26.7.0-linux-x64.tar.xz -o /tmp/node.tar.xz && \
+    mkdir -p /data/hermes/node && \
+    tar -xJf /tmp/node.tar.xz -C /data/hermes/node --strip-components=1 && \
+    rm /tmp/node.tar.xz && \
+    chmod -R 755 /data/hermes/node/bin/ && \
+    \
     # Copy installed Hermes to fallback location (HF Spaces volume may wipe /data)
     cp -r /data/hermes /opt/hermes-fallback && \
     \

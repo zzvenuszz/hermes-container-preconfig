@@ -398,26 +398,6 @@ def create_hermes_screen(hermes_executable):
         # Give screen a moment to create its socket.
         time.sleep(1)
 
-        stderr_output = ""
-
-        if process.poll() is not None:
-            stderr_output = process.stderr.read()
-
-            try:
-                CHILD_PROCESSES.remove(process)
-            except ValueError:
-                pass
-
-            log_error(
-                f"screen exited immediately with code "
-                f"{process.returncode}"
-            )
-
-            if stderr_output:
-                log_error(f"screen stderr: {stderr_output}")
-
-            return False
-
         # screen -dm returns after creating the detached session.
         #
         # We don't need to keep the Popen object around as the actual

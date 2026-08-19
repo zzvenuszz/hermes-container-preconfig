@@ -26,6 +26,12 @@ if [ -f "$CONFIG_TXT" ]; then
 fi
 
 # Restore Hermes from image fallback if volume mount wiped it
+if [ ! -d "$HERMES_HOME/node" ] && [ -d "/opt/hermes-fallback/node" ]; then
+    log "Restoring Node.js from fallback..."
+    cp -r /opt/hermes-fallback/node "$HERMES_HOME/node" 2>/dev/null || true
+    chmod -R 755 "$HERMES_HOME/node/bin" 2>/dev/null || true
+fi
+
 if [ ! -x "$HERMES_BIN" ] && [ -d "/opt/hermes-fallback/venv" ]; then
     log "Restoring Hermes from image fallback..."
     mkdir -p "$HERMES_DIR"

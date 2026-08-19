@@ -22,6 +22,7 @@ services:
       # sets OPENROUTER_API_KEY, docker compose substitutes it here and it
       # takes precedence over /app/config.txt (see entrypoint.sh).
       OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-}"
+      GOOGLE_API_KEY: "${GOOGLE_API_KEY:-}"
 
     restart: unless-stopped
 

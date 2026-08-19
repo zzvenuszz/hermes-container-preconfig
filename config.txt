@@ -26,7 +26,7 @@
 #      gemini       → cần GOOGLE_API_KEY
 #    (Danh sách đầy đủ xem trong cli-config.yaml.example, mục model.provider)
 # ----------------------------------------------------------------------------
-AI_PROVIDER=gemini
+AI_PROVIDER=openrouter
 
 # ----------------------------------------------------------------------------
 # 2) API KEYS — chỉ cần điền key của provider đã chọn ở mục 1.
@@ -35,7 +35,7 @@ AI_PROVIDER=gemini
 OPENROUTER_API_KEY=
 # ANTHROPIC_API_KEY=
 # OPENAI_API_KEY=
-GOOGLE_API_KEY=
+# GOOGLE_API_KEY=
 # FIREWORKS_API_KEY=
 # KIMI_API_KEY=
 # NOVITA_API_KEY=
@@ -46,7 +46,7 @@ GOOGLE_API_KEY=
 #      MODEL=anthropic/claude-opus-4.6
 #    Đổi model sau này bằng lệnh:  hermes model
 # ----------------------------------------------------------------------------
-MODEL=gemini-3.5-flash-lite
+MODEL=laguna-s-2.1:free
 
 # ----------------------------------------------------------------------------
 # 4) Messaging tokens — điền nếu muốn Hermes chạy trên Telegram/Discord/Slack.
