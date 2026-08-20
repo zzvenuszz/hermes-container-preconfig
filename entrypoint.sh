@@ -62,7 +62,9 @@ log "Web server started (PID $APP_PID)"
         curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
         "$VENV_BIN/python" /tmp/get-pip.py 2>/dev/null || true
         rm -f /tmp/get-pip.py
-        "$VENV_BIN/pip" install --upgrade --break-system-packages pip wheel setuptools 2>&1 | tail -3
+# Install pip + wheel + setuptools with ignore-installed (fixes packaging conflict)
+        "$VENV_BIN/python" -m ensurepip --upgrade 2>/dev/null || true
+        "$VENV_BIN/python" -m pip install --upgrade --break-system-packages --ignore-installed pip wheel setuptools 2>&1 | tail -3
         
         # Install Hermes
         "$VENV_BIN/pip" install --break-system-packages --no-cache-dir -e "$HERMES_DIR[all]" 2>&1 | tail -3
