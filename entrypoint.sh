@@ -34,6 +34,9 @@ if [ ! -x "$HERMES_BIN" ] && [ -d "/app/.hermes-fallback/venv/bin" ]; then
     chmod -R 755 "$HERMES_DIR/venv/bin" 2>/dev/null || true
     log "Fallback restore done"
 fi
+
+# --- START WEB SERVER IMMEDIATELY ---
+python3 /app/app.py &
 APP_PID=$!
 log "Web server started (PID $APP_PID)"
 
