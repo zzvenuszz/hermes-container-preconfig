@@ -10,6 +10,7 @@ export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 HERMES_DIR="$HERMES_HOME/hermes-agent"
 VENV_BIN="$HERMES_DIR/venv/bin"
 HERMES_BIN="$VENV_BIN/hermes"
+HERMES_AGENT="$VENV_BIN/hermes-agent"
 
 export PATH="/opt/node/bin:$HERMES_HOME/bin:$HERMES_HOME/node/bin:$VENV_BIN:/root/.local/bin:/usr/local/bin:/usr/bin:/bin"
 export TERM="${TERM:-xterm-256color}"
@@ -31,7 +32,8 @@ if [ ! -x "$HERMES_BIN" ] && [ -d "/app/.hermes-fallback/venv/bin" ]; then
     cp -r /app/.hermes-fallback/* "$HERMES_HOME/" 2>/dev/null || true
     mkdir -p "$HERMES_DIR"
     cp -r /app/.hermes-fallback/hermes-agent/* "$HERMES_DIR/" 2>/dev/null || true
-    chmod -R 755 "$HERMES_DIR/venv/bin" 2>/dev/null || true
+    chmod -R 755 "$HERMES_DIR/venv/bin" "$VENV_BIN" 2>/dev/null || true
+    chmod +x "$HERMES_AGENT" 2>/dev/null || true
     log "Fallback restore done"
 fi
 
@@ -65,9 +67,11 @@ log "Web server started (PID $APP_PID)"
         # Install Hermes
         "$VENV_BIN/pip" install --break-system-packages --no-cache-dir -e "$HERMES_DIR[all]" 2>&1 | tail -3
         chmod -R 755 "$VENV_BIN" 2>/dev/null || true
+        chmod +x "$HERMES_AGENT" 2>/dev/null || true
         
         if [ -x "$HERMES_BIN" ]; then
             log "Hermes installed: $HERMES_BIN"
+            log "Hermes agent: $HERMES_AGENT"
         else
             log_warn "Hermes install failed — terminal will run without agent"
         fi
