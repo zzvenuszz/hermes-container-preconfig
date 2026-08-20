@@ -367,7 +367,7 @@ def create_hermes_screen(hermes_executable):
         f'echo ""; '
         f'echo "Starting Hermes..."; '
         f'echo ""; '
-        f'exec "{hermes_executable}"'
+        f'exec "{hermes_executable.parent.parent}/python" -m hermes'
     )
 
     log("Screen command:")

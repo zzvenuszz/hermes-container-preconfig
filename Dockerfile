@@ -74,6 +74,17 @@ RUN curl -fsSL "https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-lin
 ENV PATH="/opt/node/bin:${PATH}"
 
 # ============================================================
+# PRE-INSTALL Hermes Agent (avoids runtime install.sh failures)
+# ============================================================
+RUN mkdir -p /data/hermes/hermes-agent && \
+    git clone --depth=1 https://github.com/NousResearch/hermes-agent.git /data/hermes/hermes-agent && \
+    python3 -m venv /data/hermes/hermes-agent/venv && \
+    /data/hermes/hermes-agent/venv/bin/pip install --upgrade --break-system-packages pip wheel setuptools && \
+    /data/hermes/hermes-agent/venv/bin/pip install --no-cache-dir --break-system-packages -e "/data/hermes/hermes-agent[all]" && \
+    chmod -R 755 /data/hermes/hermes-agent/venv/bin/ && \
+    cp -r /data/hermes /app/.hermes-fallback
+
+# ============================================================
 # DATA
 # ============================================================
 RUN mkdir -p /data/hermes

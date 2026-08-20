@@ -25,9 +25,15 @@ if [ -f "$CONFIG_TXT" ]; then
     cp -f "$CONFIG_TXT" "$HERMES_HOME/config.txt" 2>/dev/null || true
 fi
 
-# --- START WEB SERVER IMMEDIATELY (health check pass fast) ---
-log "Starting app.py (uvicorn 0.0.0.0:${PORT:-7860}) — installing Hermes in background"
-python3 /app/app.py &
+# --- Restore from fallback if volume mount wiped /data — runs IMMEDIATELY (no delay) ---
+if [ ! -x "$HERMES_BIN" ] && [ -d "/app/.hermes-fallback/venv/bin" ]; then
+    log "Restoring Hermes from /app/.hermes-fallback..."
+    cp -r /app/.hermes-fallback/* "$HERMES_HOME/" 2>/dev/null || true
+    mkdir -p "$HERMES_DIR"
+    cp -r /app/.hermes-fallback/hermes-agent/* "$HERMES_DIR/" 2>/dev/null || true
+    chmod -R 755 "$HERMES_DIR/venv/bin" 2>/dev/null || true
+    log "Fallback restore done"
+fi
 APP_PID=$!
 log "Web server started (PID $APP_PID)"
 
