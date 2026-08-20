@@ -49,13 +49,14 @@ log "Web server started (PID $APP_PID)"
         mkdir -p "$HERMES_DIR"
         git clone --depth=1 https://github.com/NousResearch/hermes-agent.git "$HERMES_DIR" 2>/dev/null || true
         
-        # Fix broken venv if exists
+        # Clean old venv completely (fixes pip _vendor conflict)
         if [ -d "$HERMES_DIR/venv" ]; then
-            rm -rf "$HERMES_DIR/venv"
+            log "Cleaning stale venv..."
+            rm -rf "$HERMES_DIR/venv" "$HERMES_DIR/.git" 2>/dev/null || true
         fi
         python3 -m venv "$HERMES_DIR/venv"
         
-        # Reinstall pip + wheel + setuptools first (fixes ImportError)
+        # Install pip from venv directly (avoids conflict)
         curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
         "$VENV_BIN/python" /tmp/get-pip.py 2>/dev/null || true
         rm -f /tmp/get-pip.py
