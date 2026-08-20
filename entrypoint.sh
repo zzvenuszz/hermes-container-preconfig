@@ -67,7 +67,7 @@ log "Web server started (PID $APP_PID)"
         "$VENV_BIN/python" -m pip install --upgrade --break-system-packages --ignore-installed pip wheel setuptools 2>&1 | tail -3
         
         # Install Hermes
-        "$VENV_BIN/pip" install --break-system-packages --no-cache-dir -e "$HERMES_DIR[all]" 2>&1 | tail -3
+        "$VENV_BIN/python" -m pip install --break-system-packages --no-cache-dir -e "$HERMES_DIR[all]" 2>&1 | tail -3
         chmod -R 755 "$VENV_BIN" 2>/dev/null || true
         chmod +x "$HERMES_AGENT" 2>/dev/null || true
         
